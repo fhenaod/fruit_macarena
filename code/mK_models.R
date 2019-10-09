@@ -2,7 +2,7 @@ library(tidyverse)
 library(treeplyr)
 library(bayou)
 
-tree <- read.tree("data/phylo_spp_tinigua_noded_nwk.txt")
+tree <- read.tree("data/tree_calib.nwk")
 tree$tip.label <- tolower(tree$tip.label)
 fruit_dat_raw <- read.csv("data/Base plantas Tinigua modificable_Agosto.csv", header = T )
 fruit_dat_raw$ESPECIE <- tolower(fruit_dat_raw$ESPECIE)
