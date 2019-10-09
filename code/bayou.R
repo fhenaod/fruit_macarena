@@ -2,7 +2,7 @@ library(tidyverse)
 library(treeplyr)
 library(bayou)
 
-tree <- read.tree("data/phylo_spp_tinigua_noded_nwk.txt")
+tree <- read.tree("data/tree_calib.nwk")
 tree$tip.label <- tolower(tree$tip.label)
 fruit_dat_raw <- read.csv("data/Base plantas Tinigua modificable_Agosto.csv", header = T )
 fruit_dat_raw$ESPECIE <- tolower(fruit_dat_raw$ESPECIE)
@@ -21,6 +21,13 @@ fruit_dat <- fruit_dat_raw %>% select(ESPECIE,
                                       Color.Janson) 
 
 tree_data <- make.treedata(tree, fruit_dat)
+tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr.width..cm.),
+                                   lv_len = log(Largo.hojas.total.cm.), lam_len = log(Largo.lamina.cm.),
+                                   ar_tot = log(Area.total.cm2.), ar_lam = log(Area.lamina.cm2.),
+                                   sem_fr = log(Semillas.Fruto), 
+                                   sem_len = log(Prom.Largo.semilla..mm.), sem_wd = log(Prom.Ancho.sem..mm.),
+                                   dbh = log(DBH.2017),  
+                                   dens = log(Densidad..specific.gravity.))
 
 contMap(tree_data$phy, getVector(tree_data, fr_len), fsize = c(.001,1), lwd = 2, 
         outline = F, sig = 2, type = "fan", leg.txt = "Ln fruit length")
@@ -47,7 +54,7 @@ mcmcOU<-bayou.makeMCMC(tree_data$phy, getVector(tree_data, fr_len),
 saveRDS(mcmcOU, file = "modelOU/mcmcOU.rds")
 gens<-10000
 mcmcOU$run(gens)
-setwd("/Users/franciscohenaodiaz/Documents/UBC/Projects/fruit_macarena/mac_bayou/")
+setwd("")
 mcmcOU<-readRDS("modelOU/mcmcOU.rds")
 chainOU<-mcmcOU$load()
 #chainOU<-mcmcOU$load(saveRDS = T, file = 'modelOU/mcmcOU_chain.rds')
