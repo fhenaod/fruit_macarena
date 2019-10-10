@@ -4,6 +4,7 @@ tree <- multi2di(tree)
 is.binary(tree)
 class<-tree$node.label[grep("sida",tree$node.label)]
 orders<-tree$node.label[grep("ales",tree$node.label)]
+family<-tree$node.label[grep("ceae",tree$node.label)]
 
 n_node <- function(tree, taxa){
   n_node<-c()
@@ -14,6 +15,7 @@ n_node <- function(tree, taxa){
 }
 n_class_node <- n_node(tree, class)
 n_ord_node <- n_node(tree, orders)
+n_fam_node <- n_node(tree, family)
 
 dt<-data.frame(taxon = c(class, orders),node = c(n_class_node, n_ord_node) ) 
 
