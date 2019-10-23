@@ -18,7 +18,8 @@ fruit_dat <- fruit_dat_raw %>% select(ESPECIE,
                                       Densidad..specific.gravity.,
                                       Tipo.de.hoja,
                                       Sistema_de_Dispersion,
-                                      Color.Janson) 
+                                      Color.Janson,
+                                      FAMILIA) 
 
 tree_data <- make.treedata(tree, fruit_dat)
 tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr.width..cm.),
@@ -28,6 +29,9 @@ tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr
                                    sem_len = log(Prom.Largo.semilla..mm.), sem_wd = log(Prom.Ancho.sem..mm.),
                                    dbh = log(DBH.2017),  
                                    dens = log(Densidad..specific.gravity.))
+
+tree_data$dat %>% group_by(FAMILIA) %>% 
+  summarize(Mean = mean(log(LARGO_FRUTO.cm.), na.rm = TRUE)) %>% arrange(desc(Mean))
 
 contMap(tree_data$phy, getVector(tree_data, fr_len), fsize = c(.001,1), lwd = 2, 
         outline = F, sig = 2, type = "fan", leg.txt = "Ln fruit length (cm)")
@@ -63,9 +67,15 @@ setwd("")
 mcmcOU<-readRDS("modelOU/mcmcOU.rds")
 chainOU<-mcmcOU$load()
 #chainOU<-mcmcOU$load(saveRDS = T, file = 'modelOU/mcmcOU_chain.rds')
+chainOU<-readRDS("mac_bayou/modelOU/mcmcOU_chain.rds")
 chainOU<-set.burnin(chainOU, 0.3)
 sum_c<-summary(chainOU)
+sum_c$branch.posteriors$branch.loc<-seq(1:length(sum_c$branch.posteriors$pp))
 saveRDS(sum_c, file = "sum_free_ou.rds")
+
+sum_c$branch.posteriors %>% filter(pp >= 0.3) %>% arrange(desc(pp)) # which/where shifts
+sum_c$branch.posteriors %>% filter(pp >= 0.3) %>%  tally() %>% 
+  pull()/length(tree_data$phy$edge.length)*100 %>% as.numeric() # %_branch shifts
 
 plotSimmap.mcmc(chainOU, burnin = 0.3, pp.cutoff = 0.3, cex = .01, no.margin = T)
 plotBranchHeatMap(tree_data$phy, chainOU, "theta", burnin = 0.3, pal = cm.colors, cex = .1, type = "fan")
