@@ -84,8 +84,18 @@ saveRDS(disp_ard, "output/disp_ard.rds")
 disp_sym <- fitMk(tree_data$phy, getVector(tree_data, Sistema_de_Dispersion), model = "SYM")
 saveRDS(disp_sym, "output/disp_sym.rds")
 
-rbind(disp_er$logLik, disp_ard$logLik, disp_sym$logLik)
+disp_er <- readRDS("output/disp_er.rds")
+disp_ard <- readRDS("output/disp_ard.rds") 
+disp_sym <- readRDS("output/disp_sym.rds")
+
+data.frame(Mk_model = c("ARD","SYM","ER"),
+           logLik = c(logLik(disp_ard), logLik(disp_sym), logLik(disp_er)),
+           k = c(attr(AIC(disp_ard),"df"), attr(AIC(disp_sym),"df"), attr(AIC(disp_er),"df")),
+           AIC = c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)),
+           ΔAIC = round(qpcR::akaike.weights(c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)))$deltaAIC, 2),
+           AICw = round(qpcR::akaike.weights(c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)))$weights, 2)
+           )
 
 plot(disp_er, show.zeros = F, main = "Equal rates")
-plot(disp_ard, show.zeros = F, main = "Equal rates")
-plot(disp_sym, show.zeros = F, main = "Equal rates")
+plot(disp_ard, show.zeros = F, main = "All-rates different")
+plot(disp_sym, show.zeros = F, main = "Symmetrical rates")
