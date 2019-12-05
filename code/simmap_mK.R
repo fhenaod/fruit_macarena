@@ -88,7 +88,7 @@ disp_er <- readRDS("output/disp_er.rds")
 disp_ard <- readRDS("output/disp_ard.rds") 
 disp_sym <- readRDS("output/disp_sym.rds")
 
-data.frame(Mk_model = c("ARD","SYM","ER"),
+mod_sum <- data.frame(Mk_model = c("ARD","SYM","ER"),
            logLik = c(logLik(disp_ard), logLik(disp_sym), logLik(disp_er)),
            k = c(attr(AIC(disp_ard),"df"), attr(AIC(disp_sym),"df"), attr(AIC(disp_er),"df")),
            AIC = c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)),
