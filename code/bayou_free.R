@@ -63,7 +63,7 @@ mcmcOU<-bayou.makeMCMC(tree_data$phy, getVector(tree_data, fr_len),
 saveRDS(mcmcOU, file = "modelOU/mcmcOU.rds")
 gens<-10000
 mcmcOU$run(gens)
-setwd("")
+setwd("~/")
 mcmcOU<-readRDS("modelOU/mcmcOU.rds")
 chainOU<-mcmcOU$load()
 #chainOU<-mcmcOU$load(saveRDS = T, file = 'modelOU/mcmcOU_chain.rds')
@@ -80,4 +80,19 @@ sum_c$branch.posteriors %>% filter(pp >= 0.3) %>%  tally() %>%
 plotSimmap.mcmc(chainOU, burnin = 0.3, pp.cutoff = 0.3, cex = .01, no.margin = T)
 plotBranchHeatMap(tree_data$phy, chainOU, "theta", burnin = 0.3, pal = cm.colors, cex = .1, type = "fan")
 phenogram.density(tree_data$phy, getVector(tree_data, fr_len), burnin = 0.3, chainOU, pp.cutoff = 0.3, 
+                  xlab = "Time (Myr)", ylab = "Phenotype", spread.labels = TRUE)
+
+# RJ
+setwd("Documents/UBC/Projects/fruit_macarena/ou_rj/")
+mcmc_rj <- readRDS("model_ou_rj/mcmcOU_rj.rds")
+chain_rj <- mcmc_rj$load()
+chain_rj <- set.burnin(chain_rj, 0.3)
+sum_rj <- readRDS("sum_ou_rj.rds")
+
+shift_sum <- shiftSummaries(chain_rj, mcmc_rj, pp.cutoff = .3)
+shift_sum$descendents
+
+plotSimmap.mcmc(chain_rj, burnin = 0.3, pp.cutoff = 0.3, cex = .01, no.margin = T)
+plotBranchHeatMap(tree_data$phy, chain_rj, "theta", burnin = 0.3, pal = cm.colors, cex = .1, type = "fan")
+phenogram.density(tree_data$phy, getVector(tree_data, fr_len), burnin = 0.3, chain_rj, pp.cutoff = 0.3, 
                   xlab = "Time (Myr)", ylab = "Phenotype", spread.labels = TRUE)
