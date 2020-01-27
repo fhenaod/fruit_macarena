@@ -59,11 +59,12 @@ D.XXX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_ar_tot = 0.3, theta = 
 D.1XX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_ar_tot = 0.3, theta = 0.15, slide = 1, missing.pred = 1)
 D.XNX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_ar_tot = 0.3, theta = 1,    slide = 1, missing.pred = 1)
 
-# Code explanation. 4 numbers given either: R - RJ; N - Fixed multiple; 1 - Fixed global; 0 - Absent
-# 1:β0; 2: β_area_tot; 3: β_dbh; 4: β_sem_len
-
-mod <- "RR00"
-prior.RR00 <- make.prior(tree_data$phy, plot.prior = FALSE, 
+# Code explanation. r numbers given either: R - RJ; N - Fixed multiple; 1 - Fixed global; 0 - Absent
+# 1:β0; 2: β_area_tot; 3: β_sem_fr ; 4: β_dbh; 5: β_sem_len
+ 
+#####
+mod <- "RR000"
+prior.RR000 <- make.prior(tree_data$phy, plot.prior = FALSE, 
                           dists = list(dalpha = "dhalfcauchy", dsig2 = "dhalfcauchy", 
                                        dbeta_ar_tot = "dnorm",
                                        #dbeta_sem_fr = "dnorm",
@@ -78,29 +79,28 @@ prior.RR00 <- make.prior(tree_data$phy, plot.prior = FALSE,
                                        dk = par.k, dsb = par.sb, dtheta = par.theta)
 )
 
-model.RR00 <- makeBayouModel(fr_len ~ ar_tot, rjpars = c("theta", "ar_tot"), tree = tree_data$phy,  
+model.RR000 <- makeBayouModel(fr_len ~ ar_tot, rjpars = c("theta", "ar_tot"), tree = tree_data$phy,  
                               dat = getVector(tree_data, fr_len),
-                              pred = tree_data$dat, prior.RR00, D = D.XXX(2))
+                              pred = tree_data$dat, prior.RR000, D = D.XXX(2))
 
-prior.RR00(model.RR00$startpar)
-model.RR00$model$lik.fn(model.RR00$startpar, cache, cache$dat)$loglik
+prior.RR000(model.RR000$startpar)
+model.RR000$model$lik.fn(model.RR000$startpar, cache, cache$dat)$loglik
 
-# run model ####
-gens <- 100000
+gens <- 10000
 closeAllConnections()
-mcmc.RR00 <- bayou.makeMCMC(tree_data$phy, getVector(tree_data, fr_len), pred = select(tree_data$dat, ar_tot), 
-                             model = model.RR00$model, prior = prior.RR00, startpar = model.RR00$startpar,
+mcmc.RR000 <- bayou.makeMCMC(tree_data$phy, getVector(tree_data, fr_len), pred = select(tree_data$dat, ar_tot), 
+                             model = model.RR000$model, prior = prior.RR000, startpar = model.RR000$startpar,
                              new.dir = paste0(mod, "/"), outname = paste(mod, "run1", sep = "_"), plot.freq = NULL, 
                              ticker.freq = 2000, samp = 200, perform.checks = FALSE)
 
-mcmc.RR00$run(gens)
-chain.RR00 <- mcmc.RR00$load(saveRDS = T, file = paste0(mod, "/", "mcmc_", mod, ".rds"))
-chain.RR00 <- set.burnin(chain.RR00, 0.3)
-saveRDS(chain.RR00, file = paste0(mod, "/", "chain_", mod, ".rds"))
-sum_c <- summary(chain.RR00)
+mcmc.RR000$run(gens)
+chain.RR000 <- mcmc.RR000$load(saveRDS = T, file = paste0(mod, "/", "mcmc_", mod, ".rds"))
+chain.RR000 <- set.burnin(chain.RR000, 0.3)
+saveRDS(chain.RR000, file = paste0(mod, "/", "chain_", mod, ".rds"))
+sum_c <- summary(chain.RR000)
 saveRDS(sum_c, file = paste0(mod, "/", "sum_", mod, ".rds"))
 
-shiftsum <- shiftSummaries(chain.RR00, mcmc.RR00)
+shiftsum <- shiftSummaries(chain.RR000, mcmc.RR000)
 saveRDS(shiftsum, file = paste0(mod, "/", "shiftsum_", mod, ".rds"))
 pdf(paste0(mod, "/", "shiftsummaryplot.pdf"))
 plotShiftSummaries((shiftsum))
@@ -110,7 +110,29 @@ require(foreach)
 require(doParallel)
 registerDoParallel(cores = 3)
 Bk <- qbeta(seq(0, 1, length.out = 30), 0.3, 1)
-ss.RR00 <- mcmc.RR00$steppingstone(gens, chain.RR00, Bk = Bk, burnin = 0.3, plot = F)
-saveRDS(ss.RR00, paste0(mod, "/", "ss_", mod, ".rds"))
-plot(ss.RR00)
-print(ss.RR00$lnr)
+ss.RR000 <- mcmc.RR000$steppingstone(gens, chain.RR000, Bk = Bk, burnin = 0.3, plot = F)
+saveRDS(ss.RR000, paste0(mod, "/", "ss_", mod, ".rds"))
+plot(ss.RR000)
+print(ss.RR000$lnr)
+
+#
+
+fixed.k <- shift_sum$pars$k
+fixed.sb <- shift_sum$pars$sb 
+fixed.loc <- shift_sum$pars$loc
+
+mod <- "NN000"
+prior.NNN00 <- make.prior(tree_data$phy, plot.prior = FALSE, 
+                          dists = list(dalpha = "dhalfcauchy", dsig2 = "dhalfcauchy", 
+                                       dbeta_ar_tot = "dnorm",
+                                       #dbeta_sem_fr = "dnorm",
+                                       #dbeta_dbh = "dnorm",
+                                       #dbeta_sem_len = "dnorm",
+                                       dsb = "dsb", dk = "cdpois", dtheta = "dnorm"), 
+                          param = list(dalpha = par.alpha, dsig2 = par.sig2,
+                                       dbeta_ar_tot = par.beta_ar_tot, sd = sd2,
+                                       dbeta_sem_fr = par.beta_sem_fr, 
+                                       #dbeta_dbh = par.beta_dbh,
+                                       #dbeta_sem_len = par.beta_sem_len, 
+                                       dk = par.k, dsb = par.sb, dtheta = par.theta)
+)
