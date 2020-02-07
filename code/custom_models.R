@@ -116,6 +116,7 @@ plot(ss.RR000)
 print(ss.RR000$lnr)
 
 #
+shift_sum <- readRDS("custom_models/RR000/RR000/sum_RR000.rds")
 
 fixed.k <- shift_sum$pars$k
 fixed.sb <- shift_sum$pars$sb 
