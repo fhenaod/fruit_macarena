@@ -5,6 +5,7 @@ is.binary(tree)
 class<-tree$node.label[grep("sida",tree$node.label)]
 orders<-tree$node.label[grep("ales",tree$node.label)]
 family<-tree$node.label[grep("ceae",tree$node.label)]
+no_rank <- c(tree$node.label[grep("permae",tree$node.label)], "Spermatophyta")
 
 n_node <- function(tree, taxa){
   n_node<-c()
@@ -17,18 +18,14 @@ n_class_node <- n_node(tree, class)
 n_ord_node <- n_node(tree, orders)
 n_fam_node <- n_node(tree, family)
 
-dt<-data.frame(taxon = c(class, orders),node = c(n_class_node, n_ord_node) ) 
+dt <- data.frame(taxon = c(class, orders, no_rank),node = c(n_class_node, n_ord_node, n_no_rank_node)) 
 
-node <- c(dt[which(dt$taxon=="Poales"),2], dt[which(dt$taxon=="Zingiberales"),2], dt[which(dt$taxon=="Ericales"),2], 
-          dt[which(dt$taxon=="Apiales"),2], dt[which(dt$taxon=="Magnoliales"),2], dt[which(dt$taxon=="Piperales"),2], 
-          dt[which(dt$taxon=="Commelinales"),2], dt[which(dt$taxon=="Myrtales"),2], dt[which(dt$taxon=="Cucurbitales"),2],
-          dt[which(dt$taxon=="Asparagales"),2], dt[which(dt$taxon=="Gentianales"),2], dt[which(dt$taxon=="Malpighiales"),2],
-          dt[which(dt$taxon=="Celastrales"),2], dt[which(dt$taxon=="Dioscoreales"),2], dt[which(dt$taxon=="Sapindales"),2],
-          dt[which(dt$taxon=="Ranunculales"),2], dt[which(dt$taxon=="Lamiales"),2], dt[which(dt$taxon=="Liliopsida"),2],
-          dt[which(dt$taxon=="Rosidae"),2], Ntip(tree)+which(tree$node.label==paste0("Spermatophyta")))
-
-age.min <- c(101,  30, 100, 44, 108, 111,  80,  68,  89,  97, 58, 92,   81, 101,  98, 103,  68, 123, 105, 289)
-age.max <- c(115, 109, 118, 85, 125, 122, 110, 110, 103, 113, 80, 92, 81.2, 124, 125, 122, 103, 142, 115, 337)
+taxon <- c("Poales", "Zingiberales", "Ericales", "Apiales", "Magnoliales", "Piperales", 
+          "Commelinales", "Myrtales", "Cucurbitales", "Asparagales", "Gentianales", 
+          "Malpighiales", "Celastrales", "Dioscoreales", "Sapindales", "Ranunculales", 
+          "Lamiales", "Liliopsida", "Rosidae", "Spermatophyta", "Rosales", "Aquifoliales", "Caryophyllales", "Fabales")
+age.min <- c(101,  30, 100, 44, 108, 111,  80,  68,  89,  97, 58, 92,   81, 101,  98, 103,  68, 123, 105, 289, 42,   68, 78, 75)
+age.max <- c(115, 109, 118, 85, 125, 122, 110, 110, 103, 113, 80, 92, 81.2, 124, 125, 122, 103, 142, 115, 337, 161, 100, 92, 87)
 soft.bounds <- rep(FALSE, length(node))
 cal_ages <- data.frame(node, age.min, age.max, soft.bounds)
 
