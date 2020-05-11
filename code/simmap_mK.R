@@ -36,7 +36,7 @@ tree_data <- tree_data %>% filter(Sistema_de_Dispersion %in% c("Anemocorica", "D
 tree_data$dat <- droplevels(tree_data$dat)
 summary(getVector(tree_data, Sistema_de_Dispersion))
 
-# Simumate stochastic character maps ####
+# Simulate stochastic character maps ####
 
 disp_simp_er <- make.simmap(tree_data$phy, getVector(tree_data, Sistema_de_Dispersion), model = "ER", nsim = 1000)
 saveRDS(disp_simp_er, "output/disp_simp_er.rds")
@@ -53,25 +53,25 @@ disp_simp_er_sum <- summary(disp_simp_er, plot = F)
 disp_simp_ard_sum <- summary(disp_simp_ard, plot = F)
 disp_simp_sym_sum <- summary(disp_simp_sym, plot = F)
 
-cols<-setNames(palette()[1:7],levels(getVector(tree_data, Sistema_de_Dispersion)))
+cols <- setNames(palette()[1:length(levels(getVector(tree_data, Sistema_de_Dispersion)))],levels(getVector(tree_data, Sistema_de_Dispersion)))
 
 # Equal Rates
 plot(disp_simp_er_sum, cols, type = "fan", fsize = .01, lwd = .5, cex = c(.4,.2))
-add.simmap.legend(colors = cols, x = 0.95*par()$usr[1],y = 0.9*par()$usr[4],prompt = FALSE,fsize = 0.6)
+add.simmap.legend(colors = cols, x = 0.95*par()$usr[1],y = 0.9*par()$usr[4],prompt = FALSE, fsize = 0.6)
 
 disp_simp_er_dd <- density(disp_simp_er)
 plot(disp_simp_er_dd)
 
 # All-Rates-Different
 plot(disp_simp_ard_sum, cols, type = "fan", fsize = .01, lwd = .5, cex = c(.4,.2))
-add.simmap.legend(colors = cols, x = 0.95*par()$usr[1],y = 0.9*par()$usr[4],prompt = FALSE,fsize = 0.6)
+add.simmap.legend(colors = cols, x = 0.95*par()$usr[1], y = 0.9*par()$usr[4], prompt = FALSE, fsize = 0.6)
 
 disp_simp_ard_dd <- density(disp_simp_ard)
 plot(disp_simp_ard_dd)
 
 # Symmetrical model
 plot(disp_simp_sym_sum, cols, type = "fan", fsize = .01, lwd = .5, cex = c(.4,.2))
-add.simmap.legend(colors = cols, x = 0.95*par()$usr[1],y = 0.9*par()$usr[4],prompt = FALSE,fsize = 0.6)
+add.simmap.legend(colors = cols, x = 0.95*par()$usr[1], y = 0.9*par()$usr[4], prompt = FALSE, fsize = 0.6)
 
 disp_simp_sym_dd <- density(disp_simp_sym)
 plot(disp_simp_sym_dd)
