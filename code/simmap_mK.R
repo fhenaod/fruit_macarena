@@ -4,12 +4,17 @@ library(bayou)
 
 # Data housekeeping ####
 tree <- read.tree("data/tree_calib.nwk")
+tree <- read.tree("data/Genus_phylogeny.tre")
 tree$tip.label <- tolower(tree$tip.label)
 fruit_dat_raw <- read.csv("data/Base plantas Tinigua modificable_Agosto.csv", header = T )
 fruit_dat_raw$ESPECIE <- tolower(fruit_dat_raw$ESPECIE)
-fruit_dat_raw <- filter(fruit_dat_raw, !is.na(LARGO_FRUTO.cm.))
 
-fruit_dat <- fruit_dat_raw %>% select(ESPECIE,
+fruit_dat_raw$Genus <- (sapply(strsplit(as.character(fruit_dat_raw$ESPECIE), split = "_", fixed = T), "[", 1))
+
+fruit_dat_raw <- filter(fruit_dat_raw, !is.na(LARGO_FRUTO.cm.))
+fruit_dat_raw <- filter(fruit_dat_raw, !is.na(Sistema_de_Dispersion))
+
+fruit_dat <- fruit_dat_raw %>% select(Genus, ESPECIE,
                                       LARGO_FRUTO.cm., Fr.width..cm.,
                                       Largo.hojas.total.cm., Largo.lamina.cm., 
                                       Area.total.cm2., Area.lamina.cm2.,
@@ -31,7 +36,7 @@ tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr
                                    dens = log(Densidad..specific.gravity.))
 
 tree_data <- tree_data %>% filter(Sistema_de_Dispersion %in% c("Anemocorica", "Dehiscencia_explosiva", "Endozoocorica", 
-                                                  "Epizoocorica", "Hidrocorica", "Inasistida", "Sinzoocorica"))
+                                                               "Hidrocorica",  "Sinzoocorica"))
 
 tree_data$dat <- droplevels(tree_data$dat)
 summary(getVector(tree_data, Sistema_de_Dispersion))
