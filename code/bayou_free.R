@@ -3,6 +3,8 @@ library(treeplyr)
 library(bayou)
 
 tree <- read.tree("data/tree_calib.nwk")
+tree <- read.tree("data/tree_mac_s3.tre")
+
 tree$tip.label <- tolower(tree$tip.label)
 fruit_dat_raw <- read.csv("data/Base plantas Tinigua modificable_Agosto.csv", header = T )
 fruit_dat_raw$ESPECIE <- tolower(fruit_dat_raw$ESPECIE)
@@ -96,3 +98,34 @@ plotSimmap.mcmc(chain_rj, burnin = 0.3, pp.cutoff = 0.3, cex = .01, no.margin = 
 plotBranchHeatMap(tree_data$phy, chain_rj, "theta", burnin = 0.3, pal = cm.colors, cex = .1, type = "fan")
 phenogram.density(tree_data$phy, getVector(tree_data, fr_len), burnin = 0.3, chain_rj, pp.cutoff = 0.3, 
                   xlab = "Time (Myr)", ylab = "Phenotype", spread.labels = TRUE)
+
+# RJ V.PhyloTreeS3
+tree_data$phy <- read.tree("RR000/data/tree_mac_s3.tre")
+tree_data$phy$edge.length[tree$edge.length<=0] <- 1e-6
+tree_data$phy <- extract.clade(tree, 1056) # extrae Spermatophyta
+
+mcmc_rj <- readRDS("RR000/RR000/mcmc_RR000.rds")
+chain_rj <- readRDS("RR000/RR000/chain_RR000.rds")
+sum_rj <- readRDS("RR000/RR000/sum_RR000.rds")
+
+shift_sum <- readRDS("RR000/RR000/shiftsum_RR000.rds")
+shift_sum$tree
+shift_sum$descendents
+shift_sum$descendents[sapply(shift_sum$descendents, length)>3]
+shift_sum$cladesummaries
+shift_sum$regressions[sapply(shift_sum$descendents, length)>3,] %>% data.frame() %>% 
+  mutate(rl_theta = exp(theta)) %>% round(3)
+
+# phylo-half life
+as.table(log(2)/sum_rj$statistics['alpha',c('Mean', 'HPD95Lower', 'HPD95Upper')]) %>% round(2)
+
+plotSimmap.mcmc(chain_rj, burnin = 0.3, pp.cutoff = 0.3, cex = .01, no.margin = T)
+plotBranchHeatMap(shift_sum$tree, chain_rj, "theta", burnin = 0, pal = cm.colors, cex = .1, type = "fan")
+phenogram.density(shift_sum$tree, getVector(tree_data, fr_len), burnin = 0.3, chain_rj, pp.cutoff = 0.3, 
+                  xlab = "Time (Myr)", ylab = "Phenotype", spread.labels = TRUE)
+
+pdf(paste0("shiftsummaryplot.pdf"))
+par(mfrow = c(2,2))
+plotShiftSummaries(shift_sum, single.plot = F, label.pts = T) 
+dev.off()
+

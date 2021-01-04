@@ -3,8 +3,11 @@ library(treeplyr)
 library(bayou)
 
 # data preparation ####
-tree <- read.tree("data/tree_calib.nwk")
+tree <- read.tree("data/tree_mac_s3.tre")
+tree$edge.length[tree$edge.length<=0] <- 1e-6
+tree <- extract.clade(tree, 1056) # extrae Spermatophyta
 tree$tip.label <- tolower(tree$tip.label)
+
 fruit_dat_raw <- read.csv("data/Base plantas Tinigua modificable_Agosto.csv", header = T )
 fruit_dat_raw$ESPECIE <- tolower(fruit_dat_raw$ESPECIE)
 fruit_dat_raw <- filter(fruit_dat_raw, !is.na(LARGO_FRUTO.cm.))
@@ -31,21 +34,22 @@ tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr
                                    dbh = log(DBH.2017),  
                                    dens = log(Densidad..specific.gravity.))
 
+tree_data <- filter(tree_data, !is.na(ar_tot)) # %>% filter(!is.na(sem_fr)) %>%  filter(!is.na(dbh)) %>% filter(!is.na(sem_len))
+
 tree_data$dat %>% group_by(FAMILIA) %>% 
   summarize(Mean = mean(log(LARGO_FRUTO.cm.), na.rm = TRUE)) %>% arrange(desc(Mean))
 
-tree_data <- filter(tree_data, !is.na(ar_tot)) %>% filter(!is.na(sem_fr)) %>% 
-  filter(!is.na(dbh)) %>% filter(!is.na(sem_len))
-
 cache <- bayou:::.prepare.ou.univariate(tree_data$phy, tree_data[["fr_len"]], 
-                                        pred = select(tree_data$dat, ar_tot, sem_fr, dbh, sem_len))
+                                        pred = select(tree_data$dat, ar_tot, lv_len, sem_fr, dbh, sem_len))
 
 sd2 <- sqrt(log(1+ (var(pull(tree_data$dat, fr_len), na.rm = T)) / (mean(pull(tree_data$dat, fr_len), na.rm = T))^2 ))
+sd2
 
 ## priors ####
 par.alpha <- list(scale = 1)
 par.sig2 <- list(scale = 1)
-par.beta_ar_tot <- list(mean = 0, sd = .1) 
+par.beta_ar_tot <- list(mean = 0, sd = .1)
+par.beta_lv_len <- list(mean = 0, sd = .1)
 par.beta_sem_fr <- list(mean = 0, sd = .1) 
 par.beta_dbh <- list(mean = 0, sd = .1) 
 par.beta_sem_len <- list(mean = 0, sd = .1) 
@@ -54,15 +58,15 @@ par.k <- list(lambda = (2*Ntip(tree_data$phy)-2)*(2.5/100), kmax = (2*Ntip(tree_
 par.sb <- list(bmax = 1, prob = 1)
 par.theta <- list(mean = mean(getVector(tree_data, fr_len)), sd = sd2)
 
-# Tuning pars & model making ####
+## RR0 ####
+# Tuning pars & model making
 D.XXX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_ar_tot = 0.3, theta = 3,    slide = 1, missing.pred = 1)
 D.1XX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_ar_tot = 0.3, theta = 0.15, slide = 1, missing.pred = 1)
 D.XNX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_ar_tot = 0.3, theta = 1,    slide = 1, missing.pred = 1)
 
-# Code explanation. r numbers given either: R - RJ; N - Fixed multiple; 1 - Fixed global; 0 - Absent
-# 1:β0; 2: β_area_tot; 3: β_sem_fr ; 4: β_dbh; 5: β_sem_len
- 
-#####
+# Code explanation. 5 numbers given either: R - RJ; N - Fixed multiple; 1 - Fixed global; 0 - Absent
+# 1:β0; 2: β_area_tot; 3: β_lv_len
+
 mod <- "RR000"
 prior.RR000 <- make.prior(tree_data$phy, plot.prior = FALSE, 
                           dists = list(dalpha = "dhalfcauchy", dsig2 = "dhalfcauchy", 
@@ -75,24 +79,28 @@ prior.RR000 <- make.prior(tree_data$phy, plot.prior = FALSE,
                                        dbeta_ar_tot = par.beta_ar_tot, sd = sd2,
                                        #dbeta_sem_fr = par.beta_sem_fr, 
                                        #dbeta_dbh = par.beta_dbh,
-                                       #:dbeta_sem_len = par.beta_sem_len, 
+                                       #dbeta_sem_len = par.beta_sem_len, 
                                        dk = par.k, dsb = par.sb, dtheta = par.theta)
 )
+prior.RR000
 
 model.RR000 <- makeBayouModel(fr_len ~ ar_tot, rjpars = c("theta", "ar_tot"), tree = tree_data$phy,  
                               dat = getVector(tree_data, fr_len),
                               pred = tree_data$dat, prior.RR000, D = D.XXX(2))
+model.RR000
 
 prior.RR000(model.RR000$startpar)
 model.RR000$model$lik.fn(model.RR000$startpar, cache, cache$dat)$loglik
 
-gens <- 10000
+# run model 
+gens <- 5000000
 closeAllConnections()
 mcmc.RR000 <- bayou.makeMCMC(tree_data$phy, getVector(tree_data, fr_len), pred = select(tree_data$dat, ar_tot), 
                              model = model.RR000$model, prior = prior.RR000, startpar = model.RR000$startpar,
-                             new.dir = paste0(mod, "/"), outname = paste(mod, "run1", sep = "_"), plot.freq = NULL, 
+                             file.dir = paste0(mod, "/"), outname = paste(mod, "run1", sep = "_"), plot.freq = NULL, 
                              ticker.freq = 2000, samp = 200, perform.checks = FALSE)
 
+saveRDS(mcmc.RR000, "RR000/mcmc.conf.RR000.rds")
 mcmc.RR000$run(gens)
 chain.RR000 <- mcmc.RR000$load(saveRDS = T, file = paste0(mod, "/", "mcmc_", mod, ".rds"))
 chain.RR000 <- set.burnin(chain.RR000, 0.3)
@@ -108,32 +116,75 @@ dev.off()
 
 require(foreach)
 require(doParallel)
-registerDoParallel(cores = 3)
+registerDoParallel(cores = 15)
 Bk <- qbeta(seq(0, 1, length.out = 30), 0.3, 1)
 ss.RR000 <- mcmc.RR000$steppingstone(gens, chain.RR000, Bk = Bk, burnin = 0.3, plot = F)
 saveRDS(ss.RR000, paste0(mod, "/", "ss_", mod, ".rds"))
-plot(ss.RR000)
+#plot(ss.RR00)
 print(ss.RR000$lnr)
 
-#
-shift_sum <- readRDS("custom_models/RR000/RR000/sum_RR000.rds")
+# R0R ####
+tree_data <- filter(tree_data, !is.na(lv_len))
 
-fixed.k <- shift_sum$pars$k
-fixed.sb <- shift_sum$pars$sb 
-fixed.loc <- shift_sum$pars$loc
+# Code explanation. 5 numbers given either: R - RJ; N - Fixed multiple; 1 - Fixed global; 0 - Absent
+# 1:β0; 2: β_area_tot; 3: β_lv_len
+D.XXX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_lv_len = 0.3, theta = 3,    slide = 1, missing.pred = 1)
+D.1XX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_lv_len = 0.3, theta = 0.15, slide = 1, missing.pred = 1)
+D.XNX <- function(nrj) list(alpha = 0.7, sig2 = 0.5, beta_lv_len = 0.3, theta = 1,    slide = 1, missing.pred = 1)
 
-mod <- "NN000"
-prior.NNN00 <- make.prior(tree_data$phy, plot.prior = FALSE, 
-                          dists = list(dalpha = "dhalfcauchy", dsig2 = "dhalfcauchy", 
-                                       dbeta_ar_tot = "dnorm",
-                                       #dbeta_sem_fr = "dnorm",
-                                       #dbeta_dbh = "dnorm",
-                                       #dbeta_sem_len = "dnorm",
-                                       dsb = "dsb", dk = "cdpois", dtheta = "dnorm"), 
-                          param = list(dalpha = par.alpha, dsig2 = par.sig2,
-                                       dbeta_ar_tot = par.beta_ar_tot, sd = sd2,
-                                       dbeta_sem_fr = par.beta_sem_fr, 
-                                       #dbeta_dbh = par.beta_dbh,
-                                       #dbeta_sem_len = par.beta_sem_len, 
-                                       dk = par.k, dsb = par.sb, dtheta = par.theta)
+mod <- "R0R"
+prior.R0R <- make.prior(tree_data$phy, plot.prior = FALSE,  
+                        dists = list(dalpha = "dhalfcauchy", dsig2 = "dhalfcauchy",
+                                     dbeta_lv_len = "dnorm",
+                                     #dbeta_sem_fr = "dnorm",
+                                     #dbeta_dbh = "dnorm",
+                                     #dbeta_sem_len = "dnorm",
+                                     dsb = "dsb", dk = "cdpois", dtheta = "dnorm"),
+                        param = list(dalpha = par.alpha, dsig2 = par.sig2,
+                                     dbeta_lv_len = par.beta_lv_len, sd = sd2,
+                                     #dbeta_sem_fr = par.beta_sem_fr, 
+                                     #dbeta_dbh = par.beta_dbh,
+                                     #dbeta_sem_len = par.beta_sem_len, 
+                                     dk = par.k, dsb = par.sb, dtheta = par.theta)
 )
+prior.R0R
+
+model.R0R <- makeBayouModel(fr_len ~ lv_len, rjpars = c("theta", "lv_len"), tree = tree_data$phy,
+                              dat = getVector(tree_data, fr_len),
+                              pred = tree_data$dat, prior.R0R, D = D.XXX(2))
+
+prior.R0R(model.R0R$startpar)
+model.R0R$model$lik.fn(model.R0R$startpar, cache, cache$dat)$loglik
+
+# run model 
+gens <- 5000000
+closeAllConnections()
+mcmc.R0R <- bayou.makeMCMC(tree_data$phy, getVector(tree_data, fr_len), pred = select(tree_data$dat, lv_len),
+                           model = model.R0R$model, prior = prior.R0R, startpar = model.R0R$startpar,
+                           file.dir = paste0(mod, "/"), outname = paste(mod, "run1", sep = "_"), plot.freq = NULL,
+                           ticker.freq = 2000, samp = 200, perform.checks = FALSE)
+
+
+saveRDS(mcmc.R0R, "R0R/mcmc.conf.R0R.rds")
+mcmc.R0R$run(gens) 
+chain.R0R <- mcmc.R0R$load(saveRDS = T, file = paste0(mod, "/", "mcmc_", mod, ".rds"))
+chain.R0R <- set.burnin(chain.R0R, 0.3)
+saveRDS(chain.R0R, file = paste0(mod, "/", "chain_", mod, ".rds"))
+sum_c <- summary(chain.R0R)
+saveRDS(sum_c, file = paste0(mod, "/", "sum_", mod, ".rds"))
+
+shiftsum <- shiftSummaries(chain.R0R, mcmc.R0R)
+saveRDS(shiftsum, file = paste0(mod, "/", "shiftsum_", mod, ".rds"))
+pdf(paste0(mod, "/", "shiftsummaryplot.pdf"))
+par(mfrow = c(2,2))
+plotShiftSummaries(shiftsum, single.plot = F, label.pts = T)
+dev.off()
+
+require(foreach)
+require(doParallel)
+registerDoParallel(cores = 15)
+Bk <- qbeta(seq(0, 1, length.out = 30), 0.3, 1)
+ss.R0R <- mcmc.R0R$steppingstone(gens, chain.R0R, Bk = Bk, burnin = 0.3, plot = F)
+saveRDS(ss.R0R, paste0(mod, "/", "ss_", mod, ".rds"))
+#plot(ss.RR00)
+print(ss.R0R$lnr)
