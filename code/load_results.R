@@ -26,11 +26,7 @@ phenogram.density(tree_data$phy, getVector(tree_data, fr_len), burnin = 0.3, cha
 phenogram.density(tree_data$phy, getVector(tree_data, ar_tot), burnin = 0.3, chain.RR000, pp.cutoff = 0.3, 
                   xlab = "Time (Myr)", ylab = "Total area", spread.labels=TRUE)
 
-# Fixed
-
-
 # Phylogenetic half-life
 round(data.frame(mean = log(2)/sum_RR000$statistics["alpha","Mean"], 
                  hpdL = log(2)/sum_RR000$statistics["alpha","HPD95Lower"], 
                  hpdU = log(2)/sum_RR000$statistics["alpha","HPD95Upper"]), 3)
-

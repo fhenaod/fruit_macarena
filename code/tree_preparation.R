@@ -1,4 +1,5 @@
 library(treeplyr)
+
 tree <- read.tree("data/phylo_spp_tinigua_noded_nwk.txt")
 tree <- multi2di(tree)
 is.binary(tree)
