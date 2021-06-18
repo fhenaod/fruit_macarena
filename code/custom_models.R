@@ -34,11 +34,136 @@ tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr
                                    dbh = log(DBH.2017),  
                                    dens = log(Densidad..specific.gravity.))
 
-tree_data <- filter(tree_data, !is.na(ar_tot)) # %>% filter(!is.na(sem_fr)) %>%  filter(!is.na(dbh)) %>% filter(!is.na(sem_len))
+#tree_data <- filter(tree_data, !is.na(fr_len)) 
+   #%>% filter(!is.na(sem_fr)) %>%  filter(!is.na(dbh)) %>% 
+  #filter(!is.na(sem_len))
 
 tree_data$dat %>% group_by(FAMILIA) %>% 
   summarize(Mean = mean(log(LARGO_FRUTO.cm.), na.rm = TRUE)) %>% arrange(desc(Mean))
 
+# 
+library(nlme)
+tree_data$dat <- tree_data$dat %>% 
+  mutate(disp_lato = 
+           factor(ifelse(Sistema_de_Dispersion == 
+                           "Endozoocorica", "Endozoocorica", "No_Endozoocorica")))
+
+# phylogenetic signal per trait
+phy_sig_fr <- filter(tree_data, !is.na(fr_len)) %>% treedply(list("K" = phylosig(phy, getVector(., fr_len), "K"), 
+                         "lambda" = phylosig(phy, getVector(., fr_len),"lambda")))
+
+phy_sig_ln <- filter(tree_data, !is.na(lv_len)) %>% treedply(list("K" = phylosig(phy, getVector(., lv_len), "K"), 
+                         "lambda" = phylosig(phy, getVector(., lv_len),"lambda")))
+
+phy_sig_ar <- filter(tree_data, !is.na(ar_tot)) %>% treedply(list("K" = phylosig(phy, getVector(., ar_tot), "K"), 
+                         "lambda" = phylosig(phy, getVector(., ar_tot),"lambda")))
+
+
+phy_sig_se_l <- filter(tree_data, !is.na(sem_len)) %>% treedply(list("K" = phylosig(phy, getVector(., sem_len), "K"), 
+                                       "lambda" = phylosig(phy, getVector(., sem_len),"lambda")))
+
+phy_sig_se_w <- filter(tree_data, !is.na(sem_wd)) %>% treedply(list("K" = phylosig(phy, getVector(., sem_wd), "K"), 
+                                       "lambda" = phylosig(phy, getVector(., sem_wd),"lambda")))
+
+phy_sig_dens <- filter(tree_data, !is.na(dens)) %>% treedply(list("K" = phylosig(phy, getVector(., dens), "K"), 
+                                       "lambda" = phylosig(phy, getVector(., dens),"lambda")))
+
+# pgls fruit length vs leave length or area
+tr_dt_fr_lv <- filter(tree_data, !is.na(fr_len)) %>% filter(!is.na(lv_len))
+tr_dt_fr_ar <- filter(tree_data, !is.na(fr_len)) %>% filter(!is.na(ar_tot))
+                                                            
+bm_ln <- gls(fr_len~lv_len, correlation = corBrownian(phy = tr_dt_fr_lv$phy),
+               data = tr_dt_fr_lv$dat, method = "ML")
+
+bm_ar <- gls(fr_len~ar_tot, correlation = corBrownian(phy = tr_dt_fr_ar$phy), 
+               data = tr_dt_fr_ar$dat, method = "ML")
+
+bm_ln_disp <- gls(fr_len~lv_len*disp_lato, correlation = corBrownian(phy = tr_dt_fr_lv$phy), 
+               data = tr_dt_fr_lv$dat, method = "ML")
+bm_ar_disp <- gls(fr_len~ar_tot*disp_lato, correlation = corBrownian(phy = tr_dt_fr_ar$phy), 
+               data = tr_dt_fr_ar$dat, method = "ML")
+
+data.frame(
+length = coef(bm_ln_disp),
+area = coef(bm_ar_disp)
+) %>% round(3)
+
+tr_dt_fr_lv_tmp <- tr_dt_fr_lv$phy
+tr_dt_fr_ar_tmp <- tr_dt_fr_ar$phy
+
+tr_dt_fr_lv_tmp$edge.length <- tr_dt_fr_lv_tmp$edge.length*100
+tr_dt_fr_ar_tmp$edge.length <- tr_dt_fr_ar_tmp$edge.length*100
+
+ou_ln <- gls(fr_len~lv_len, correlation = corMartins(1, phy = tr_dt_fr_lv_tmp), 
+             data = tr_dt_fr_lv$dat, method = "ML")
+
+ou_ar <- gls(fr_len~ar_tot, correlation = corMartins(1, phy = tr_dt_fr_ar_tmp), 
+             data = tr_dt_fr_ar$dat, method = "ML")
+
+
+ou_ln_disp <- gls(fr_len~lv_len*disp_lato, correlation = corMartins(1, phy = tr_dt_fr_lv_tmp), 
+                  data = tr_dt_fr_lv$dat, method = "ML")
+
+ou_ar_disp <- gls(fr_len~ar_tot*disp_lato, correlation = corMartins(1, phy = tr_dt_fr_ar_tmp), 
+                  data = tr_dt_fr_ar$dat, method = "ML")
+
+s_bm_ln <- summary(bm_ln_disp)
+s_ou_ln <- summary(ou_ln_disp)
+s_bm_ar <- summary(bm_ar_disp)
+s_ou_ar <- summary(ou_ar_disp)
+
+data.frame(
+model = c("BM", "OU", "BM", "OU"),
+predc = c("lv_len", "lv_len", "lv_ar", "lv_ar"),
+logLik = c(s_bm_ln$logLik, s_ou_ln$logLik, s_bm_ar$logLik, s_ou_ar$logLik),
+AIC = c(s_bm_ln$AIC, s_ou_ln$AIC, s_bm_ar$AIC, s_ou_ar$AIC), 
+AICw = c(aic.w(c(s_bm_ln$AIC, s_ou_ln$AIC, s_bm_ar$AIC, s_ou_ar$AIC)))
+) %>% arrange(desc(AICw))
+
+anova(bm_ar_disp)
+coef(bm_ar_disp) %>% data.frame() %>% round(3)
+
+tree_data$dat %>% ggplot(aes(x = lv_len, y = fr_len, 
+                             shape = disp_lato, color = disp_lato)) +
+  geom_point() + geom_smooth(method = "lm", se = T, fullrange = F) + 
+  theme_classic() +
+  scale_color_viridis_d(begin = 0.2, end = .5) +
+  theme() + 
+  labs(x = "Ln Leave length (cm)", y = "Ln Fruit length (cm)")
+
+# pgls seed isometry
+tr_dt_seed <- filter(tree_data, !is.na(sem_len)) %>% filter(!is.na(sem_wd))
+tr_dt_seed <- filter(tr_dt_seed, !is.infinite(sem_len)) %>% filter(!is.infinite(sem_wd))
+tr_dt_seed$phy$edge.length <- tr_dt_seed$phy$edge.length*100
+
+bm_seed_disp <- gls(sem_len~sem_wd*disp_lato, correlation = corBrownian(phy = tr_dt_seed$phy), 
+                  data = tr_dt_seed$dat, method = "ML")
+ou_seed_disp <- gls(sem_len~sem_wd*disp_lato, correlation = corMartins(1, phy = tr_dt_seed$phy), 
+                  data = tr_dt_seed$dat, method = "ML")
+
+s_bm_se <- bm_seed_disp %>% summary()
+s_ou_se <- ou_seed_disp %>% summary()
+
+data.frame(
+  model = c("BM", "OU"),
+  #predc = c("lv_len", "lv_len", "lv_ar", "lv_ar"),
+  logLik = c(s_bm_se$logLik, s_ou_se$logLik),
+  AIC = c(s_bm_se$AIC, s_ou_se$AIC), 
+  AICw = c(aic.w(c(s_bm_se$AIC, s_ou_se$AIC)))
+) %>% arrange(desc(AICw))
+
+anova(s_ou_se)
+coef(s_ou_se) %>% data.frame() %>% round(3)
+
+tree_data$dat %>% ggplot(aes(x = sem_len, y = sem_wd, 
+                             shape = disp_lato, color = disp_lato)) +
+  geom_point() + geom_smooth(method = "lm", se = T, fullrange = F) + 
+  theme_classic() +
+  scale_color_viridis_d(option = "magma", begin = 0.2, end = .5) +
+  theme() + 
+  labs(x = "Ln Seed length (cm)", y = "Ln Seed width (cm)")
+
+###### bayou ######
 cache <- bayou:::.prepare.ou.univariate(tree_data$phy, tree_data[["fr_len"]], 
                                         pred = select(tree_data$dat, ar_tot, lv_len, sem_fr, dbh, sem_len))
 
