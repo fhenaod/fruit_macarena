@@ -3,9 +3,11 @@ library(treeplyr)
 library(bayou)
 
 # Data housekeeping ####
-#tree <- read.tree("data/tree_calib.nwk")
-tree <- read.tree("data/Genus_phylogeny.tre")
-tree$tip.label <- (tree$tip.label)
+tree <- read.tree("data/tree_calib.nwk")
+#tree <- read.tree("data/Genus_phylogeny.tre")
+#tree <- read.tree("data/neves_species_phylo.tre")
+tree <- tree_s3$scenario.3
+
 fruit_dat_raw <- read.csv("data/Base plantas Tinigua modificable_Agosto.csv", header = T )
 fruit_dat_raw$ESPECIE <- (fruit_dat_raw$ESPECIE)
 
@@ -55,14 +57,52 @@ disp_er <- readRDS("dispersal_Mk/output/disp_er.rds")
 disp_ard <- readRDS("dispersal_Mk/output/disp_ard.rds") 
 disp_sym <- readRDS("dispersal_Mk/output/disp_sym.rds")
 
+disp_er <- readRDS("mk_models/output/disp_er.rds")
+disp_ard <- readRDS("mk_models/output/disp_ard.rds") 
+disp_sym <- readRDS("mk_models/output/disp_sym.rds")
+
 mod_sum <- data.frame(Mk_model = c("ARD","SYM","ER"),
                       logLik = c(logLik(disp_ard), logLik(disp_sym), logLik(disp_er)),
-                      k = c(attr(AIC(disp_ard),"df"), attr(AIC(disp_sym),"df"), attr(AIC(disp_er),"df")),
+                      k = c(length(disp_ard$rates), length(disp_sym$rates), length(disp_er$rates)),
                       AIC = c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)),
                       ΔAIC = round(qpcR::akaike.weights(c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)))$deltaAIC, 2),
-                      AICw = round(qpcR::akaike.weights(c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)))$weights, 2)
+                      AICw = round(qpcR::akaike.weights(c(AIC(disp_ard), AIC(disp_sym), AIC(disp_er)))$weights, 3)
 )
 mod_sum
+
+# transition rates 
+library(circlize)
+library(tidyverse)
+
+qm_ard <- disp_ard %>% phytools::as.Qmatrix() %>% as.table()
+dimnames(qm_ard) = list(source = colnames(qm_ard), 
+                        sink = rownames(qm_ard))
+
+cols = c("darkorange2","blue","green3","red2", "steelblue")
+circos.clear()
+circos.par(start.degree = 90, gap.degree = 6)
+chordDiagram(x = qm_ard, grid.col = cols, grid.border = "black", 
+             transparency = 0.5, order = rownames(qm_ard), 
+             directional = T, direction.type = "arrows",
+             self.link = 1, preAllocateTracks = list(track.height = 0.1),
+             annotationTrack = "grid", annotationTrackHeight = c(0.1, 0.1),
+             link.border = "NA", link.sort = T, link.decreasing = T,
+             link.arr.length = 0.15, link.arr.lty = 3, link.arr.col = "#252525", 
+             link.largest.ontop = F)
+
+# Add labels to chord diagram
+circos.trackPlotRegion(track.index = 1, bg.border = NA,
+                       panel.fun = function(x, y) {
+                         xlim = get.cell.meta.data("xlim")
+                         sector.index = get.cell.meta.data("sector.index")
+                         # Text direction
+                         theta = circlize(mean(xlim), 1)[1, 1] %% 360
+                         dd = ifelse(theta < 180 || theta > 360, "bending.inside", "bending.outside")
+                         circos.text(x = mean(xlim), y = 0.8, labels = sector.index, facing = dd,
+                                     niceFacing = TRUE, cex = .6, font = 1)})
+
+# Add title
+mtext("Trans. Sist. Disp.", outer = FALSE, cex = 2, font = 2, line = -1)
 
 #plot(disp_er, show.zeros = F, main = "Equal rates")
 plot(disp_ard, show.zeros = F, main = "All-rates different")
@@ -86,6 +126,7 @@ disp_simp_sym_sum <- summary(disp_simp_sym, plot = F)
 
 #disp_simp_er_sum <- readRDS("dispersal_Mk/output/disp_er_sum.rds")
 disp_simp_ard_sum <- readRDS("dispersal_Mk/output/disp_ard_sum.rds")
+disp_simp_ard_sum <- readRDS("mk_models/output/disp_ard_sum.rds")
 #disp_simp_sym_sum <- readRDS("dispersal_Mk/output/disp_sym_sum.rds")
 
 cols <- setNames(palette()[1:length(levels(getVector(tree_data, Sistema_de_Dispersion)))], levels(getVector(tree_data, Sistema_de_Dispersion)))
