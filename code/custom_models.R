@@ -1,6 +1,5 @@
-library(tidyverse)
 library(treeplyr)
-library(bayou)
+library(tidyverse)
 library(ggpubr)
 
 # data load and clean ####
@@ -24,6 +23,7 @@ fruit_dat <- fruit_dat_raw %>% select(ESPECIE,
                                       Tipo.de.hoja,
                                       Sistema_de_Dispersion = Sistema_de_Dispersión,
                                       #Color.Janson,
+                                      Habito = Hábito,
                                       FAMILIA) 
 
 tree_data <- make.treedata(tree, fruit_dat)
@@ -48,16 +48,19 @@ tree_data$dat %>% group_by(FAMILIA) %>%
 tree_data$dat %>% group_by(Sistema_de_Dispersion) %>% 
   count() %>% arrange(desc(n))
 
-# recode dispersal systems
+# recode dispersal systems ####
 library(nlme)
 tree_data <- tree_data %>% filter(Sistema_de_Dispersion != "")
 
+# dispersal two-categories
 tree_data$dat <- tree_data$dat %>% 
   mutate(disp_lato = 
            factor(ifelse(Sistema_de_Dispersion == 
                            "Endozoocórica", "endozoocorica", "no_endozoocorica")))
+
 tree_data$dat %>% pull(disp_lato) %>% summary()
 
+# dispersal three-categories
 tree_data$dat <- tree_data$dat %>% 
   mutate(disp_3cat = 
            factor(ifelse(Sistema_de_Dispersion == "Endozoocórica", "Endozoochoric",
@@ -65,6 +68,106 @@ tree_data$dat <- tree_data$dat %>%
                          "Non endozoochoric"))))
 
 tree_data$dat %>% pull(disp_3cat) %>% summary()
+
+# pca ####
+library(vegan); library(factoextra); library(FactoMineR)
+
+pca_trs <- 
+  tree_data$dat %>% 
+  dplyr::select(LARGO_FRUTO.cm., Largo.hojas.total.cm., Area.lámina.cm2.,
+                Semillas.Fruto, Prom.Largo.semilla..mm., Prom.Ancho.sem..mm.,
+                DBH.2017, Densidad..specific.gravity., dispersal = disp_3cat) %>% 
+  drop_na() %>% PCA(., graph = F, quali.sup = 9)
+
+# log-transformed
+pca_trs <- 
+tree_data$dat %>% 
+  dplyr::select(fruit_length = fr_len, leaf_length = lv_len, 
+                laminar_area = ar_lam, seeds_fruit = sem_fr, 
+                seed_length = sem_len, seed_width = sem_wd, 
+                dbh, wood_density = dens, dispersal = disp_3cat) %>% 
+  drop_na() %>% PCA(., graph = F, quali.sup = 9)
+
+fviz_pca_biplot(pca_trs, col.var = "cos2", col.ind = "contrib", 
+                gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                repel = T) + theme_classic()
+plotellipses(pca_trs, 9)
+
+fviz_eig(pca_trs, addlabels = T)
+pca_vars <- get_pca_var(pca_trs)
+
+# pca plot most important contrubuting vars
+fviz_pca_var(pca_trs, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             #alpha.var = "contrib",
+             repel = T) + theme_classic()
+plotellipses(pca_trs, 9)
+
+fviz_contrib(pca_trs, choice = "var", axes = 1, top = 10) # Vars contributions to PC1
+fviz_contrib(pca_trs, choice = "var", axes = 2, top = 10) # Vars contributions to PC2
+
+fviz_contrib(pca_trs, choice = "var", axes = 1:2, top = 10) # Vars contributions to PC1&2
+
+# discriminat analysis ####
+library(caret)
+library(MASS)
+
+cat2filt <- tree_data$dat %>% 
+  dplyr::select(LARGO_FRUTO.cm., Largo.hojas.total.cm., 
+                Area.lámina.cm2., Prom.Largo.semilla..mm., FAMILIA) %>% 
+  drop_na() %>% group_by(FAMILIA) %>% tally %>% 
+  filter(n > 3) %>% dplyr::select(FAMILIA)
+
+daf2lda <- tree_data$dat %>% 
+  dplyr::select(LARGO_FRUTO.cm., Largo.hojas.total.cm., Area.lámina.cm2.,
+                Prom.Largo.semilla..mm., FAMILIA) %>% 
+  drop_na() %>% 
+  filter(FAMILIA %in% c(cat2filt)$FAMILIA) %>% droplevels()
+
+training.samples <- daf2lda %>% pull(FAMILIA) %>% 
+  createDataPartition(p = .8, list = F)
+
+train.data <- daf2lda[training.samples, ]
+test.data <- daf2lda[-training.samples, ]
+
+preproc.param <- train.data %>% 
+  preProcess(method = c("center", "scale"))
+
+train.transformed <- preproc.param %>% predict(train.data)
+test.transformed <- preproc.param %>% predict(test.data)
+
+# LDA ####
+m_lda <- lda(FAMILIA~., data = train.transformed)
+predictions <- m_lda %>% predict(test.transformed) # predictions
+mean(predictions$class==test.transformed$FAMILIA) # model accuracy
+
+lda.data <- cbind(train.transformed, predict(m_lda)$x)
+ggplot(lda.data, aes(LD1, LD2)) + geom_point(aes(color = FAMILIA)) +
+  theme_classic()
+
+ggord::ggord(m_lda, train.transformed$FAMILIA) + theme_classic()
+
+ldahist(data = predictions$x[,1], 
+        g = train.transformed$FAMILIA)
+
+# LMM ####
+library(lme4)
+
+gen <- 
+  fruit_dat %>% 
+  mutate(genus = str_split(fruit_dat$ESPECIE, "_", n = 2, simplify = F) %>% 
+           sapply("[", 1), genus = as.factor(genus)) %>% 
+  lmer(log(Largo.hojas.total.cm.) ~ (1|genus), data = .)
+
+fam <- 
+  fruit_dat %>% mutate(FAMILIA = as.factor(FAMILIA)) %>% 
+  lmer(log(Largo.hojas.total.cm.) ~ (1|FAMILIA), data = .)
+
+gen %>% lattice::qqmath(id = 0.05)
+fam %>% lattice::qqmath(id = 0.05)
+
+VarCorr(gen, comp = c("Variance","Std.Dev."))
+VarCorr(fam, comp = c("Variance","Std.Dev."))
 
 # phylogenetic signal per trait #####
 phy_sig_fr <- filter(tree_data, !is.na(fr_len)) %>% treedply(list("K" = phylosig(phy, getVector(., fr_len), "K"), 
@@ -123,22 +226,50 @@ data.frame(
   #          ),
   r2 = c(fit_fr$r.squared, fit1$r.squared, fit1.1$r.squared #, fit2$r.squared, fit2.1$r.squared
          ),
-  aicw(c(fit_fr$aic, fit1$aic, fit1.1$aic#, fit2$aic, fit2.1$aic
+  geiger::aicw(c(fit_fr$aic, fit1$aic, fit1.1$aic#, fit2$aic, fit2.1$aic
   ))
   #AICw = c(phytools::aic.w(c(fr_size$aic, fit1$aic, fit1.1$aic#, fit2$aic, fit2.1$aic
   #                           )))
 ) %>% arrange(desc(w)) %>% mutate(across(where(is.numeric), round, 3))
 
 fit1.1 %>% summary()
-fit_fr %>% summary()
-lm(fr_len ~ lv_len, data = tree_data$dat) %>% summary()
-lm(fr_len ~ lv_len+disp_3cat, data = tree_data$dat) %>% summary()
+fit1.1 %>% coefficients()
+fit1 %>% summary()
+lm_reg <- lm(fr_len ~ lv_len, data = tree_data$dat)
+lm_reg %>% summary()
+lm_reg_disp <- lm(fr_len ~ lv_len+disp_3cat, data = tree_data$dat)
+lm_reg_disp %>% summary()
+
+# plot predictions and residuals
+grid <- tree_data$dat %>% filter(!is.na(lv_len), !is.na(disp_3cat)) %>%  
+  data_grid(lv_len, disp_3cat) %>% 
+  gather_predictions(fit1.1, lm_reg, lm_reg_disp)
+
+tree_data$dat %>% 
+ggplot(aes(lv_len, fr_len, shape = disp_3cat, colour = disp_3cat)) + 
+  geom_point() + 
+  geom_line(data = grid, aes(y = pred)) + 
+  theme_classic() +
+  scale_color_viridis_d(option = "viridis", direction = -1, begin = 0, end = .65) +
+  facet_wrap(~ model)
+
+tree_data$dat %>% filter(!is.na(lv_len), !is.na(disp_3cat)) %>% 
+  gather_residuals(fit1.1, lm_reg, lm_reg_disp) %>% 
+  ggplot(aes(lv_len, resid, colour = disp_3cat)) + 
+  geom_point() +
+  scale_color_viridis_d(option = "viridis", direction = -1, begin = 0, end = .65) +
+  facet_grid(model ~ disp_3cat)
+
+# fruit length vs DBH
+phylolm(log1p(LARGO_FRUTO.cm.) ~ log1p(DBH.2017), 
+                data = tree_data$dat, phy = tree_data$phy, model = "lambda") %>% 
+  summary()
 
 #ml_step <- phylostep(fr_len ~ lv_len + ar_tot + dens,
 #                     data = tree_data$dat, phy = tree_data$phy, 
 #                     model = "lambda", direction = "both")
 
-#phyloANCOVA seed isom
+#phyloANCOVA seed isometry
 tree_data$dat <- tree_data$dat %>% 
   mutate(sem_len_new = ifelse(sem_len > sem_wd, sem_len, sem_wd),
          sem_wd_new = ifelse(sem_wd < sem_len, sem_wd, sem_len)) 
@@ -175,9 +306,63 @@ data.frame(
 
 summary(seed_isoxdisp)
 
+# roundness
+fit_rd <- phylolm((log1p(Prom.Ancho.sem..mm.)/log1p(Prom.Largo.semilla..mm.)) ~ disp_3cat, 
+                  data = tree_data$dat, phy = tree_data$phy, model = "lambda")
+
+summary(fit_rd)
+
 # ou shifts in a trait
-OUshifts(getVector(tree_data, fr_len), tree_data$phy,
-         method = "mbic", nmax = 2)
+#OUshifts(getVector(tree_data, fr_len), tree_data$phy,
+#         method = "mbic", nmax = 2)
+
+# anova Largo.hojas.total.cm per family
+lm_f <- phylolm(log(Largo.hojas.total.cm.) ~ as.factor(FAMILIA), 
+                data = tree_data$dat, phy = tree_data$phy, model = "lambda")
+
+log(tree_data$dat$Largo.hojas.total.cm.) %>% hist()
+
+tab <- lm(log(Largo.hojas.total.cm.) ~ FAMILIA, 
+   data = tree_data$dat) %>% summary()
+
+tab$coefficients %>% data.frame() %>% # select(Pr...t..) %>% 
+  filter(Pr...t.. <= .05) %>% arrange((Pr...t..)) %>% 
+  mutate(fams = rownames(.) %>% gsub("FAMILIA", "", .)) %>% 
+  select(fams, Estimate, SE = Std..Error, t.value, p.val = Pr...t..) %>% 
+  write.csv(file = "largo.hojas.anova.csv", row.names = F)
+  
+# laminar area vs DBH
+lm_m <- phylolm(log1p(Area.lámina.cm2.) ~ log1p(DBH.2017), 
+                data = tree_data$dat, phy = tree_data$phy, model = "lambda")
+lm_m %>% summary()
+lm_m$n
+coefficients(lm_m)[2] %>% exp() -1 # coeff in real space
+
+# laminar area vs plant habit
+# habits summary
+tree_data$dat %>% group_by(Habito) %>% count() %>% 
+  write_delim(file = "habitos_mac.csv", delim = ";")
+
+# habits load
+hab_df <- read.delim("data/habitos_mac.csv", sep = ";")
+tree_data$dat <- 
+left_join(
+  tree_data$dat,
+  hab_df %>% select(Habito, new_habito = X), by = c("Habito")
+)
+
+tree_data$dat %>% group_by(new_habito) %>% count()
+
+tree_data$dat %>% filter(new_habito != "") %>%  
+  ggplot(aes(x = new_habito, y = log(Area.lámina.cm2.))) +
+  geom_boxplot() + theme_classic() +
+  labs(x = "Habit", y = "Ln Laminar area (cm2)")
+
+lm_h <- phylolm(log(Area.lámina.cm2.) ~ new_habito, 
+                data = tree_data$dat, phy = tree_data$phy, model = "lambda")
+lm_h %>% summary()
+lm_h$n
+coefficients(lm_h)[9] %>% exp() -1 # coeff in real space
 
 # pgls fruit length vs leave length or area ####
 tr_dt_fr_lv <- filter(tree_data, !is.na(fr_len)) %>% filter(!is.na(lv_len))
@@ -272,6 +457,7 @@ tree_data$dat %>% ggplot(aes(x = sem_len, y = sem_wd,
   labs(x = "Ln Seed length (mm)", y = "Ln Seed width (mm)")
 
 ###### bayou ######
+library(bayou)
 cache <- bayou:::.prepare.ou.univariate(tree_data$phy, tree_data[["fr_len"]], 
                                         pred = select(tree_data$dat, ar_tot, lv_len, sem_fr, dbh, sem_len))
 
