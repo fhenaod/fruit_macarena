@@ -80,12 +80,23 @@ tree_data$dat %>%
   mutate(tog = paste0(FAMILIA," (", n,")")) %>% 
   slice(1:10) %>% pull(tog)
 
+# dispersal three-categories
+tree_data$dat <- tree_data$dat %>% 
+  mutate(disp_3cat = 
+           factor(ifelse(Sistema_de_Dispersion == "Endozoochory", "Endozoochoric",
+                         ifelse(Sistema_de_Dispersion == "Anemochory", "Anemochoric",
+                                "Non endozoochoric"))))
+tree_data$dat %>% 
+  pull(disp_3cat) %>% summary()
+
+# basic tree
 circ <- ggtree(tree_data$phy, 
                layout = "circular",
                size = 0.15) #+ 
   #geom_text(aes(label = node), color = "red", cex = 2.5, hjust = -.3) # red node numbers
 # %>% open_tree(angle = 45) # fish eye
 
+#add dispersal systems
 p1 <- gheatmap(circ, 
                tree_data$dat %>% 
                  dplyr::select(disp_3cat) %>% 
@@ -93,7 +104,7 @@ p1 <- gheatmap(circ,
                offset = 90, width = .1,
                colnames = F) +
   scale_fill_manual(name = "Dispersal\nsystem", 
-                    values = wes_palette("FantasticFox1",  3, type = "continuous"))
+                    values = wes_palette("FantasticFox1",  3, type = "discrete"))
 p2 <- p1 + new_scale_fill()
 
 p3 <- 
@@ -111,10 +122,9 @@ p3 <-
 #scale_fill_viridis_c(option = "D", name = "Functional\ntraits")
 
 # families to paint
-fam2paint <- c("Fabaceae", "Rubiaceae", "Moraceae", #"Poaceae",
-               "Araceae", "Arecaceae", 
-               "Melastomataceae", "Apocynaceae",
-               "Bignoniaceae", "Malvaceae")
+fam2paint <- c("Fabaceae", "Rubiaceae", "Moraceae", 
+               "Araceae",  "Arecaceae", "Melastomataceae", 
+               "Apocynaceae", "Bignoniaceae", "Malvaceae")
 
 fams_nodes <- 
 lapply(fam2paint, 
@@ -123,7 +133,7 @@ lapply(fam2paint,
 ) %>% unlist()
 
 # shading clades
-p3 + 
+p2 + 
   geom_hilight(node = fams_nodes[1], "min", fill = 'darkgreen', alpha = .5) +
   geom_hilight(node = fams_nodes[2], 'min', fill = 'firebrick', alpha = .5) +
   geom_hilight(node = fams_nodes[3], 'min', fill = 'salmon',    alpha = .65) +
@@ -131,7 +141,8 @@ p3 +
   geom_hilight(node = fams_nodes[5], 'min', fill = 'steelblue', alpha = .5) +
   geom_hilight(node = fams_nodes[6], 'min', fill = 'pink',      alpha = .5) +
   geom_hilight(node = fams_nodes[7], 'min', fill = 'blue',      alpha = .5) +
-  geom_hilight(node = fams_nodes[8], 'min', fill = 'cyan2',     alpha = .5)
+  geom_hilight(node = fams_nodes[8], 'min', fill = 'cyan2',      alpha = .5) +
+  geom_hilight(node = fams_nodes[9], 'min', fill = 'violetred',  alpha = .5)
 ggsave("figures/tree_data.png", 
        width = 21, height = 20, units = "cm", dpi = 600)
 
@@ -145,11 +156,60 @@ p3 %>%
 # bar and letters on clades
 #p3 +
 circ + 
-  geom_cladelabel(node = 1029, label = "Clade A", 
-                  fontsize = 5, angle = 90, hjust = "center",
-                  #geom = "label", #fill = "white",
+  geom_cladelabel(node = fams_nodes[1], label = fam2paint[1], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
                   #barsize = .001, 
-                  color = "darkgreen", offset.text = 500, align = T)
+                  color = "darkgreen", offset.text = 5, align = T) +
+  geom_cladelabel(node = fams_nodes[2], label = fam2paint[2], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "salmon", offset.text = 5, align = T) +
+  geom_cladelabel(node = fams_nodes[3], label = fam2paint[3], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "firebrick", offset.text = 5, align = T) +
+  geom_cladelabel(node = fams_nodes[4], label = fam2paint[4], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "goldenrod", offset.text = 5, align = T) +
+  geom_cladelabel(node = fams_nodes[5], label = fam2paint[5], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "steelblue", offset.text = 5, align = T) +
+  geom_cladelabel(node = fams_nodes[6], label = fam2paint[6], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "pink", offset.text = 5, align = T) +
+  geom_cladelabel(node = fams_nodes[7], label = fam2paint[7], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "blue", offset.text = 5, align = T) +
+  geom_cladelabel(node = fams_nodes[8], label = fam2paint[8], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "cyan2", offset.text = 5, align = T)+
+  geom_cladelabel(node = fams_nodes[9], label = fam2paint[9], 
+                  fontsize = 2, angle = 90, hjust = "center",
+                  geom = "label", fill = "white",
+                  #barsize = .001, 
+                  color = "violetred", offset.text = 5, align = T) +
+  geom_hilight(node = fams_nodes[1], "min", fill = 'darkgreen', alpha = .5) +
+  geom_hilight(node = fams_nodes[2], 'min', fill = 'firebrick', alpha = .5) +
+  geom_hilight(node = fams_nodes[3], 'min', fill = 'salmon',    alpha = .65) +
+  geom_hilight(node = fams_nodes[4], 'min', fill = 'goldenrod', alpha = .5) +
+  geom_hilight(node = fams_nodes[5], 'min', fill = 'steelblue', alpha = .5) +
+  geom_hilight(node = fams_nodes[6], 'min', fill = 'pink',      alpha = .5) +
+  geom_hilight(node = fams_nodes[7], 'min', fill = 'blue',      alpha = .5) +
+  geom_hilight(node = fams_nodes[8], 'min', fill = 'cyan2',      alpha = .5) +
+  geom_hilight(node = fams_nodes[9], 'min', fill = 'violetred',  alpha = .5)
 
 # check
 tree_data$dat %>%
