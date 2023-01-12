@@ -7,26 +7,26 @@ tree <- read.tree("data/tree_mac_s3.tre")
 
 tree$tip.label <- tolower(tree$tip.label)
 fruit_dat_raw <- read.csv("data/Base plantas Tinigua modificable_Agosto.csv", header = T )
-fruit_dat_raw$ESPECIE <- tolower(fruit_dat_raw$ESPECIE)
+fruit_dat_raw$ESPECIE <- tolower(fruit_dat_raw$ESPECIE) %>% gsub(" ", "_", x = .)
 fruit_dat_raw <- filter(fruit_dat_raw, !is.na(LARGO_FRUTO.cm.))
 
 fruit_dat <- fruit_dat_raw %>% select(ESPECIE,
                                       LARGO_FRUTO.cm., Fr.width..cm.,
                                       Largo.hojas.total.cm., Largo.lamina.cm., 
-                                      Area.total.cm2., Area.lamina.cm2.,
+                                      Area.total.cm2., Area.lámina.cm2.,
                                       Semillas.Fruto,
                                       Prom.Largo.semilla..mm., Prom.Ancho.sem..mm.,
                                       DBH.2017,
                                       Densidad..specific.gravity.,
                                       Tipo.de.hoja,
-                                      Sistema_de_Dispersion,
+                                      Sistema_de_Dispersión,
                                       Color.Janson,
-                                      FAMILIA) 
+                                      FAMILIA, Hábito) 
 
 tree_data <- make.treedata(tree, fruit_dat)
 tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr.width..cm.),
                                    lv_len = log(Largo.hojas.total.cm.), lam_len = log(Largo.lamina.cm.),
-                                   ar_tot = log(Area.total.cm2.), ar_lam = log(Area.lamina.cm2.),
+                                   ar_tot = log(Area.total.cm2.), ar_lam = log(Area.lámina.cm2.),
                                    sem_fr = log(Semillas.Fruto), 
                                    sem_len = log(Prom.Largo.semilla..mm.), sem_wd = log(Prom.Ancho.sem..mm.),
                                    dbh = log(DBH.2017),  
@@ -35,6 +35,7 @@ tree_data <- tree_data %>%  mutate(fr_len = log(LARGO_FRUTO.cm.), fr_wd = log(Fr
 tree_data$dat %>% group_by(FAMILIA) %>% 
   summarize(Mean = mean(log(LARGO_FRUTO.cm.), na.rm = TRUE)) %>% arrange(desc(Mean))
 
+# map data
 contMap(tree_data$phy, getVector(tree_data, fr_len), fsize = c(.001,1), lwd = 2, 
         outline = F, sig = 2, type = "fan", leg.txt = "Ln fruit length (cm)")
 
@@ -43,8 +44,6 @@ contMap(filter(tree_data, !is.na(ar_tot))$phy, getVector(filter(tree_data, !is.n
 
 treedply(tree_data, list("K" = phytools::phylosig(phy, getVector(tree_data, fr_len), "K"),
                          "lambda" = phytools::phylosig(phy, getVector(tree_data, fr_len), "lambda")))
-
-getVector(tree_data, ar_tot)[!is.na()]
 
 # Free OU
 sd2<-sqrt(log(1+ (var(pull(tree_data$dat, fr_len), na.rm = T)) / (mean(pull(tree_data$dat, fr_len), na.rm = T))^2 ))
