@@ -130,39 +130,43 @@ library(phytools)
 
 trait_sig <- list(
   phy_sig_fr_dry_w = filter(tree_data, !is.na(fr_dry_w)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., fr_dry_w), "K"),
-                  "lambda" = phylosig(phy, getVector(., fr_dry_w),"lambda"))),
+    treedply(list("K" = phylosig(phy, getVector(., fr_dry_w), "K", test = T),
+                  "lambda" = phylosig(phy, getVector(., fr_dry_w), "lambda", test = T))),
   
   phy_sig_fr = filter(tree_data, !is.na(fr_len)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., fr_len), "K"), 
-                  "lambda" = phylosig(phy, getVector(., fr_len),"lambda"))),
+    treedply(list("K" = phylosig(phy, getVector(., fr_len), "K", test = T), 
+                  "lambda" = phylosig(phy, getVector(., fr_len),"lambda", test = T))),
   
   phy_sig_ar = filter(tree_data, !is.na(ar_tot)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., ar_tot), "K"), 
-                  "lambda" = phylosig(phy, getVector(., ar_tot),"lambda"))),
+    treedply(list("K" = phylosig(phy, getVector(., ar_tot), "K", test = T), 
+                  "lambda" = phylosig(phy, getVector(., ar_tot),"lambda", test = T))),
   
   phy_sig_ln = filter(tree_data, !is.na(lv_len)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., lv_len), "K"), 
-                  "lambda" = phylosig(phy, getVector(., lv_len),"lambda"))),
+    treedply(list("K" = phylosig(phy, getVector(., lv_len), "K", test = T), 
+                  "lambda" = phylosig(phy, getVector(., lv_len),"lambda", test = T))),
   
   phy_sig_se_l = filter(tree_data, !is.na(sem_len)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., sem_len), "K"),
-                  "lambda" = phylosig(phy, getVector(., sem_len),"lambda"))),
+    treedply(list("K" = phylosig(phy, getVector(., sem_len), "K", test = T),
+                  "lambda" = phylosig(phy, getVector(., sem_len),"lambda", test = T))),
   
   phy_sig_se_fr = filter(tree_data, !is.na(sem_fr)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., sem_fr), "K"),
-                  "lambda" = phylosig(phy, getVector(., sem_fr),"lambda"))),
+    treedply(list("K" = phylosig(phy, getVector(., sem_fr), "K", test = T),
+                  "lambda" = phylosig(phy, getVector(., sem_fr),"lambda", test = T))),
   
   phy_sig_se_w = filter(tree_data, !is.na(sem_wd)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., sem_wd), "K"),
-                  "lambda" = phylosig(phy, getVector(., sem_wd),"lambda"))),
+    treedply(list("K" = phylosig(phy, getVector(., sem_wd), "K", test = T),
+                  "lambda" = phylosig(phy, getVector(., sem_wd),"lambda", test = T))),
   
   phy_sig_dens = filter(tree_data, !is.na(dens)) %>% 
-    treedply(list("K" = phylosig(phy, getVector(., dens), "K"),
-                  "lambda" = phylosig(phy, getVector(., dens),"lambda")))
+    treedply(list("K" = phylosig(phy, getVector(., dens), "K", test = T),
+                  "lambda" = phylosig(phy, getVector(., dens),"lambda", test = T)))
 )
 
-sapply(trait_sig, "[[", 2) 
+traits_phylo_sig_df <- 
+  sapply(trait_sig, "[[", 2, simplify = T) %>% 
+  t() %>% data.frame() %>% 
+  rownames_to_column(var = "trait") %>% 
+  select(trait, lambda, logL, "p-value" = P)
 
 ## stepwise phyloANCOVA: seed isometrics ######
 library(phylolm)
