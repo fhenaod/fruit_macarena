@@ -68,7 +68,7 @@ tree_data$dat %>%
   group_by(Sistema_de_Dispersion) %>% 
   count() %>% arrange(desc(n))
 
-# Figure 1, plot phylo with data ####
+# Figure 1, plot phylo with data and panel hist vars####
 library(ggtree)
 library(ggnewscale)
 
@@ -118,8 +118,8 @@ p3 <-
            #colnames_angle = 90, colnames_offset_y = .25
   ) +
   scale_fill_gradientn(name = "Functional\ntraits", 
-                       colours = wes_palette("Zissou1",  100, type = "continuous"))
-#scale_fill_viridis_c(option = "D", name = "Functional\ntraits")
+                       colours = wes_palette("Zissou1",  100, type = "continuous")) + 
+  scale_fill_viridis_c(option = "D", name = "Functional\ntraits")
 
 # families to paint
 fam2paint <- c("Fabaceae", "Rubiaceae", "Moraceae", 
@@ -133,7 +133,8 @@ lapply(fam2paint,
 ) %>% unlist()
 
 # shading clades
-p2 + 
+phylo_data <- 
+p3 + #theme(legend.position = "top") +
   geom_hilight(node = fams_nodes[1], "min", fill = 'darkgreen', alpha = .5) +
   geom_hilight(node = fams_nodes[2], 'min', fill = 'firebrick', alpha = .5) +
   geom_hilight(node = fams_nodes[3], 'min', fill = 'salmon',    alpha = .65) +
@@ -144,7 +145,7 @@ p2 +
   geom_hilight(node = fams_nodes[8], 'min', fill = 'cyan2',      alpha = .5) +
   geom_hilight(node = fams_nodes[9], 'min', fill = 'violetred',  alpha = .5)
 ggsave("figures/tree_data.png", 
-       width = 21, height = 20, units = "cm", dpi = 600)
+       width = 25, height = 25, units = "cm", dpi = 600)
 
 # other ways to show clades in trees
 # collapsing clades
@@ -216,6 +217,113 @@ tree_data$dat %>%
   select(FAMILIA,Sistema_de_Dispersion, Habito, disp_3cat) %>% 
   data.frame(row.names = tree_data$phy$tip.label) %>% tail()
 
+library(ggthemes)
+
+mu <- 
+  tree_data$dat %>% 
+  select("Log Fruit length (cm)" = LARGO_FRUTO.cm., 
+         "Log Leaf length (cm)" = Largo.hojas.total.cm., 
+         "Log Leaf area (cm2)" = Area.total.cm2.,
+         "Log Seeds per fruit" = Semillas.Fruto, 
+         "Log Seed length (mm)" = Prom.Largo.semilla..mm.,
+         "Log Fruit dry weight (gr)" = "Fruit.Dry.Weight") %>% 
+  mutate_all(log1p) %>% 
+  gather(key = trait, value) %>%
+  plyr::ddply("trait", summarise, 
+              grp.mean = mean(value, na.rm = T),
+              sd_d = sd(value, na.rm = T),
+              cv = (sd_d/grp.mean)*100,
+              l_sd = grp.mean-sd_d,
+              u_sd = grp.mean+sd_d) %>% 
+  mutate_if(is.numeric, round, 2)
+
+paste0(
+  "λ = ", 
+  traits_phylo_sig_df %>%
+    slice(1:6) %>% 
+    pull(lambda) %>% 
+    unlist() %>% round(2)
+)
+
+paste0(
+  "p = ", 
+  traits_phylo_sig_df %>%
+    slice(1:6) %>% 
+    pull(`p-value`) %>% 
+    unlist() #%>% round(3)
+)
+
+lbd <- 
+  data.frame(
+    trait = c("Log Fruit dry weight (gr)",
+              "Log Fruit length (cm)", 
+              "Log Leaf area (cm2)", 
+              "Log Leaf length (cm)", 
+              "Log Seed length (mm)",
+              "Log Seeds per fruit"),
+    lambda_txt = paste0(
+      "λ = ", 
+      traits_phylo_sig_df %>%
+        slice(1:6) %>% 
+        pull(lambda) %>% 
+        unlist() %>% round(2),
+      " ***"
+    ),
+    x_p = c(5, 4, 9, 5.5, 3.7, 7),
+    y_p  = c(42, 90, 72, 148, 77, 300)
+  )
+
+hist_traits_plot <-   
+  tree_data$dat %>% 
+  select("Log Fruit length (cm)" = LARGO_FRUTO.cm., 
+         "Log Leaf length (cm)" = Largo.hojas.total.cm.,
+         "Log Leaf area (cm2)" = Area.total.cm2.,
+         "Log Seeds per fruit" = Semillas.Fruto, 
+         "Log Seed length (mm)" = Prom.Largo.semilla..mm.,
+         "Log Fruit dry weight (gr)" = "Fruit.Dry.Weight") %>% 
+  gather(key = trait, value) %>%
+  ggplot(aes(x = log1p(value))) +
+  geom_histogram(color = "gray", fill = "lightgray",
+                 position = "identity", na.rm = T) +
+  theme_classic(base_size = 12) + 
+  geom_vline(data = mu, aes(xintercept = grp.mean),
+             color = "red", linetype = "dashed", size = .65) +
+  geom_vline(data = mu, aes(xintercept = l_sd),
+             color = "black", linetype = "longdash", size = .5) +
+  geom_vline(data = mu, aes(xintercept = u_sd),
+             color = "black", linetype = "longdash", size = .5) +
+  geom_segment(data = data.frame(trait = "Log Fruit dry weight (gr)", 
+                                 xvalue = 4.63, yvalue = 10, 
+                                 xend = 4.63, yend = 5,
+                                 lineend = "mitre",
+                                 linejoin = "mitre"),
+               aes(x = xvalue, y = yvalue, xend = xend, yend = yend),
+               arrow = arrow(length = unit(.25, "cm"), type = "open"),
+               size = 1, colour = "steelblue") +
+  geom_text(data = lbd, 
+            mapping = aes(x = x_p, y = y_p, label = lambda_txt)) +
+  facet_wrap(~trait, scales = "free", 
+             #switch = "x"
+             #strip.position = c("bottom")
+  ) +
+  theme(strip.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank()) +
+  labs(y = "Count", x = "")
+ggsave("figures/vars_hists_log1p.png", bg = "white",
+       width = 25, height = 25, units = "cm", dpi = 600)
+
+# Fig. 1 ab verical
+library(patchwork)
+phylo_data + hist_traits_plot +
+  plot_layout(design = "AA
+                        AA
+                        BB") +
+  plot_annotation(tag_levels = 'a', tag_sep = " ")
+ggsave("figures/fig_1ab.png", 
+       width = 28, height = 35, units = "cm", dpi = 600)
 
 # Figure 2, seed width vs length by dispersal system ####
 tree_data$dat %>% 
@@ -434,67 +542,6 @@ ggscatter(tree_data$dat, x = "Prom.Largo.semilla..mm.", y = "LARGO_FRUTO.cm.",
     aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~"), 
         color = disp_3cat)) + 
   geom_abline(slope = 1, intercept = 0, lty = 2)
-
-# Figure X Supp. panel hist vars. ####
-library(ggthemes)
-
-mu <- 
-tree_data$dat %>% 
-  select("Log Fruit length (cm)" = LARGO_FRUTO.cm., 
-         "Log Leaf length (cm)" = Largo.hojas.total.cm., 
-         "Log Leaf area (cm2)" = Area.total.cm2.,
-         "Log Seeds per fruit" = Semillas.Fruto, 
-         "Log Seed length (mm)" = Prom.Largo.semilla..mm.,
-         "Log Fruit dry weight (gr)" = "Fruit.Dry.Weight") %>% 
-  mutate_all(log1p) %>% 
-  gather(key = trait, value) %>%
-  plyr::ddply("trait", summarise, 
-              grp.mean = mean(value, na.rm = T),
-              sd_d = sd(value, na.rm = T),
-              cv = (sd_d/grp.mean)*100,
-              l_sd = grp.mean-sd_d,
-              u_sd = grp.mean+sd_d) %>% 
-  mutate_if(is.numeric, round, 2)
-
-tree_data$dat %>% 
-  select("Log Fruit length (cm)" = LARGO_FRUTO.cm., 
-         "Log Leaf length (cm)" = Largo.hojas.total.cm.,
-         "Log Leaf area (cm2)" = Area.total.cm2.,
-         "Log Seeds per fruit" = Semillas.Fruto, 
-         "Log Seed length (mm)" = Prom.Largo.semilla..mm.,
-         "Log Fruit dry weight (gr)" = "Fruit.Dry.Weight") %>% 
-  gather(key = trait, value) %>%
-  ggplot(aes(x = log1p(value))) +
-  geom_histogram(color = "gray", fill = "lightgray",
-                 position = "identity", na.rm = T) +
-  theme_classic(base_size = 12) + 
-  geom_vline(data = mu, aes(xintercept = grp.mean),
-             color = "red", linetype = "dashed", size = .65) +
-  geom_vline(data = mu, aes(xintercept = l_sd),
-             color = "black", linetype = "longdash", size = .5) +
-  geom_vline(data = mu, aes(xintercept = u_sd),
-             color = "black", linetype = "longdash", size = .5) +
-  geom_segment(data = data.frame(trait = "Log Fruit dry weight (gr)", 
-                                 xvalue = 4.63, yvalue = 10, 
-                                 xend = 4.63, yend = 5,
-                                 lineend = "mitre",
-                                 linejoin = "mitre"),
-               aes(x = xvalue, y = yvalue, xend = xend, yend = yend),
-               arrow = arrow(length = unit(.25, "cm"), type = "open"),
-               size = 1, colour = "steelblue") +
-  facet_wrap(~trait, scales = "free", 
-             #switch = "x"
-             #strip.position = c("bottom")
-              
-             ) +
-  theme(strip.background = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank()) +
-  labs(y = "Count", x = "")
-ggsave("figures/vars_hists_log1p.png", bg = "white",
-       width = 20, height = 20, units = "cm", dpi = 600)
 
 # Figure 3 Supp. fruit length ~ leaf length all dispersal system ####
 # log-transf datavars
