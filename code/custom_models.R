@@ -218,6 +218,7 @@ sum_mod_seed$coefficients %>%
   round(3) %>% data.frame() %>% #select(-StdErr) %>% 
   rename(Beta = Estimate, SE = StdErr, 
          "t-value" = t.value, "p-value" = p.value) %>%  
+  #write.csv(file = "seed_isom_model_tab.csv", sep = ";", dec = ".")
   kbl(caption = paste0("Table 1S. Seed isometry model coefficients") ) %>%
   kable_classic(html_font = "Cambria", #font_size = 20, 
               full_width = F, position = "float_right") %>% 
@@ -248,7 +249,8 @@ sum_mod_elong$coefficients %>%
 ## stepwise phyloANCOVA: fruit length vs leaf feats #####
 rownames(tree_data$dat) <- tree_data$phy$tip.label
 step_mod_fr <- 
-phylostep(fr_len ~ lv_len + sem_len + sem_wd + dbh + sem_fr + disp_3cat, #+ Habito, 
+phylostep(fr_len ~ lv_len + sem_len + sem_wd + #dbh + 
+            sem_fr + disp_3cat, #+ Habito, 
              data = tree_data$dat, phy = tree_data$phy, 
              model = "lambda", 
              direction = "both")
@@ -257,7 +259,7 @@ sum_mod_fr <- step_mod_fr %>% summary()
 rownames(sum_mod_fr$coefficients) <- 
   c("Intercept", "Leaf\nlength",
     "Seed\nlength", "Seed\nwidth",
-    "DBH", 
+    #"DBH", 
     "Seeds\nper fruit",
     "Endozoochoric", 
     "Non-endozoochoric")
@@ -284,7 +286,8 @@ data.frame(
 sum_mod_fr$coefficients %>% 
   round(3) %>% data.frame() %>% #select(-StdErr) %>% 
   rename(Beta = Estimate, SE = StdErr, 
-         "t-value" = t.value, "p-value" = p.value) %>%  
+         "t-value" = t.value, "p-value" = p.value) %>% 
+  #write.csv(file = "fruit_model_tab.csv")
   kbl(caption = paste0("Table 2S. Fruit length model coefficients")) %>%
   kable_classic(full_width = F, html_font = "Cambria") %>% 
   save_kable(file = "figures/fru_step_fit.png", density = 600,
