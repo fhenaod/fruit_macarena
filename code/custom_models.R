@@ -111,7 +111,7 @@ tree_data$dat %>%
 tree_data$dat <- tree_data$dat %>% 
   mutate(disp_lato = 
            factor(ifelse(Sistema_de_Dispersion == 
-                           "Endozoochory", "Endozoochory", "Non endozoochoric")))
+                           "Endozoochory", "Endozoochorous", "Non-endozoochorous")))
 
 tree_data$dat %>% 
   pull(disp_lato) %>% summary()
@@ -119,9 +119,9 @@ tree_data$dat %>%
 # dispersal three-categories
 tree_data$dat <- tree_data$dat %>% 
   mutate(disp_3cat = 
-           factor(ifelse(Sistema_de_Dispersion == "Endozoochory", "Endozoochoric",
-                         ifelse(Sistema_de_Dispersion == "Anemochory", "Anemochoric",
-                         "Non endozoochoric"))))
+           factor(ifelse(Sistema_de_Dispersion == "Endozoochory", "Endozoochorous",
+                         ifelse(Sistema_de_Dispersion == "Anemochory", "Anemochorous",
+                         "Non-endozoochorous"))))
 tree_data$dat %>% 
   pull(disp_3cat) %>% summary()
 
