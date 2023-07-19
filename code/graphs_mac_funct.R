@@ -83,9 +83,9 @@ tree_data$dat %>%
 # dispersal three-categories
 tree_data$dat <- tree_data$dat %>% 
   mutate(disp_3cat = 
-           factor(ifelse(Sistema_de_Dispersion == "Endozoochory", "Endozoochoric",
-                         ifelse(Sistema_de_Dispersion == "Anemochory", "Anemochoric",
-                                "Non endozoochoric"))))
+           factor(ifelse(Sistema_de_Dispersion == "Endozoochory", "Endozoochorous",
+                         ifelse(Sistema_de_Dispersion == "Anemochory", "Anemochorous",
+                                "Non-endozoochorous"))))
 tree_data$dat %>% 
   pull(disp_3cat) %>% summary()
 
@@ -144,7 +144,7 @@ p3 + #theme(legend.position = "top") +
   geom_hilight(node = fams_nodes[7], 'min', fill = 'blue',      alpha = .5) +
   geom_hilight(node = fams_nodes[8], 'min', fill = 'cyan2',      alpha = .5) +
   geom_hilight(node = fams_nodes[9], 'min', fill = 'violetred',  alpha = .5)
-ggsave("figures/tree_data.png", 
+ggsave("figures/tree_data.pdf", 
        width = 25, height = 25, units = "cm", dpi = 600)
 
 # other ways to show clades in trees
@@ -322,7 +322,7 @@ phylo_data + hist_traits_plot +
                         AA
                         BB") +
   plot_annotation(tag_levels = 'a', tag_sep = " ")
-ggsave("figures/fig_1ab.png", 
+ggsave("figures/fig_1ab.png", #device = ,
        width = 28, height = 35, units = "cm", dpi = 600)
 
 # Figure 2, seed width vs length by dispersal system ####
@@ -342,7 +342,7 @@ tree_data$dat %>%
   #scale_color_viridis_d(option = "magma", direction = 1, begin = 0, end = .65) 
 #geom_abline(slope = .97, intercept = -0.49, lwd = 1, col = "#488f31") +
 #geom_abline(slope = .86, intercept = -.76, lwd = 1, col = "#e08861") 
-ggsave("figures/seed_isom_3cat.png", 
+ggsave("figures/fig3.pdf", 
        width = 20, height = 20, units = "cm", dpi = 600)
 
 # regression formula per category
@@ -414,7 +414,7 @@ ggplot(tree_data$dat, aes(x = exp(sem_len_new), y = exp(sem_wd_new),
   labs(x = "Seed length (mm)", y = "Seed width (mm)") +
   theme(legend.position = "top", panel.background = element_blank())
 
-# Figure 3, fruit length ~ leaf length by dispersal system ####
+# Figure 4, fruit length ~ leaf length by dispersal system ####
 # log-transf datavars
 tree_data$dat %>% 
   ggplot(aes(x = (lv_len), y = (fr_len), 
@@ -428,7 +428,7 @@ tree_data$dat %>%
   labs(x = "Ln Leaf length (cm)", y = "Ln Fruit length (cm)",
        color = "Dispersal system", shape = "Dispersal system") +
   scale_color_manual(values = wes_palette("FantasticFox1",  3, type = "continuous"))
-ggsave("figures/fr_lf_len_3cat.png", 
+ggsave("figures/fig_4.pdf", 
        width = 20, height = 20, units = "cm", dpi = 600)
 
 # other figs
@@ -451,7 +451,7 @@ ggscatter(tree_data$dat, x = "lv_len", y = "fr_len",
     aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~"), 
         color = disp_3cat))
 
-# Figure 4. average fruit and laminar length ####
+# Figure X. average fruit and laminar length ####
 # biggest 10 families
 fams_av <- fruit_dat_raw %>% group_by(FAMILIA) %>% 
   summarise(ave_fr = mean(LARGO_FRUTO.cm., na.rm = T), n = n()) %>% 
@@ -505,7 +505,7 @@ pp2 <- tree_data$dat %>%
   geom_smooth(method = "lm", se = T, show.legend = F) +
   theme(legend.position = "top") +
   #geom_abline(slope = 1, intercept = 0, lty = 2) +
-  labs(x = "Ln Leaf area (mm2)", y = "", 
+  labs(x = "Leaf area (mm2)", y = "Fruit lenght", 
        color = "Dispersal system", shape = "Dispersal system") +
   scale_color_manual(values = wes_palette("FantasticFox1",  3, type = "continuous"))
 
