@@ -1,5 +1,5 @@
 # Stevenson et al. 2023 Am. J. Bot.
-https://doi.org/xxx
+https://doi.org/10.1002/ajb2.16211
 
 Data and code from the paper: 
 
