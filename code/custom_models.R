@@ -187,13 +187,13 @@ sum_mod_seed <- step_mod_seed %>% summary()
 rownames(sum_mod_seed$coefficients) <- 
   c("Intercept", 
     "Seed\nlength", 
-    "Endozoochoric", 
-    "Non-endozoochoric",
+    "Endozoochorous", 
+    "Non-endozoochorous",
     "DBH", 
     "Leaf\nlength", 
     "Seeds\nper fruit",
-    "Seed length x\nEndozoochoric", 
-    "Seed length x\nNon-endozoochoric")
+    "Seed length x\nEndozoochorous", 
+    "Seed length x\nNon-endozoochorous")
 
 isom_plot <- 
 data.frame(
@@ -241,7 +241,7 @@ sum_mod_elong$coefficients %>%
   round(3) %>% data.frame() %>% #select(-StdErr) %>% 
   rename(Beta = Estimate, SE = StdErr, 
          "t-value" = t.value, "p-value" = p.value) %>%  
-  kbl(caption = paste0("Table 3S. Seed elongation model coeficients")) %>%
+  kbl(caption = paste0("Table 3S. Seed elongation model coefficients")) %>%
   kable_classic(full_width = F, html_font = "Cambria") %>% 
   save_kable(file = "figures/seed_elong_fit.png"
              , self_contained = T)
@@ -261,8 +261,8 @@ rownames(sum_mod_fr$coefficients) <-
     "Seed\nlength", "Seed\nwidth",
     #"DBH", 
     "Seeds\nper fruit",
-    "Endozoochoric", 
-    "Non-endozoochoric")
+    "Endozoochorous", 
+    "Non-endozoochorous")
 
 fruit_plot <- 
 data.frame(
@@ -297,9 +297,9 @@ library(patchwork)
 isom_plot + fruit_plot +
   plot_layout(design = "A
               B", guides = 'collect') +
-  plot_annotation(tag_levels = 'a', tag_sep = " ")
-ggsave("figures/eff_ci.png", 
-       width = 10, height = 12, dpi = 600)
+  plot_annotation(tag_levels = 'A', tag_sep = " ")
+ggsave("figures/fig_2.pdf", device = cairo_pdf,
+       width = 28, height = 33, dpi = 600, units = "cm")
 
 # simple anovas: phylom does not work !! ?? 
 # Largo.hojas per family
